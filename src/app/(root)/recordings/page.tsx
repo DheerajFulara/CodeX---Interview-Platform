@@ -61,7 +61,10 @@ function RecordingsPage() {
     if (!recordingToDelete) return;
 
     try {
-      await hideRecording({ recordingUrl: recordingToDelete.url });
+      await hideRecording({
+        recordingUrl: recordingToDelete.url,
+        recordingFilename: recordingToDelete.filename,
+      });
       setLocallyDeletedRecordingUrls((current) => {
         const nextKeys = [recordingToDelete.url, recordingToDelete.filename];
         const merged = new Set(current);

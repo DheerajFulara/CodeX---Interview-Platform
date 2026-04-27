@@ -84,6 +84,11 @@ function DashboardHome() {
 
   const upcomingInterviews = useMemo(() => {
     const now = Date.now();
+    const hiddenStatuses = new Set(["canceled", "completed", "succeeded", "failed"]);
+    const isVisibleInUpcoming = (interview: Doc<"interviews">) => {
+      const oneHourAfterStart = interview.startTime + 60 * 60 * 1000;
+      return oneHourAfterStart > now && !hiddenStatuses.has(interview.status);
+    };
 
     if (isInterviewer) {
       if (!user?.id || !allInterviews) return [];
@@ -92,15 +97,14 @@ function DashboardHome() {
         .filter(
           (interview) =>
             interview.interviewerIds.includes(user.id) &&
-            interview.startTime > now &&
-            interview.status !== "canceled"
+            isVisibleInUpcoming(interview)
         )
         .sort((a, b) => a.startTime - b.startTime);
     }
 
     if (isCandidate && interviews) {
       return interviews
-        .filter((interview) => interview.startTime > now)
+        .filter((interview) => isVisibleInUpcoming(interview))
         .sort((a, b) => a.startTime - b.startTime);
     }
 
@@ -124,6 +128,8 @@ function DashboardHome() {
         router.push(`/${title.toLowerCase()}`);
     }
   };
+
+  const joinInterviewAction = QUICK_ACTIONS.find((action) => action.title === "Join Interview");
 
   const handleOpenEdit = (interview: Doc<"interviews">) => {
     const interviewDate = new Date(interview.startTime);
@@ -389,13 +395,6 @@ function DashboardHome() {
             )}
           </div>
 
-          <MeetingModal
-            isOpen={showModal}
-            onClose={() => setShowModal(false)}
-            title={modalType === "join" ? "Join Meeting" : "Start Meeting"}
-            isJoinMeeting={modalType === "join"}
-          />
-
           <Dialog open={showScheduleModal} onOpenChange={setShowScheduleModal}>
             <DialogContent className="sm:max-w-[700px] h-[calc(100vh-120px)] overflow-auto">
               <DialogHeader>
@@ -611,6 +610,15 @@ function DashboardHome() {
         </>
       ) : (
         <>
+          {joinInterviewAction && (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <ActionCard
+                action={joinInterviewAction}
+                onClick={() => handleQuickAction(joinInterviewAction.title)}
+              />
+            </div>
+          )}
+
           <div className="mt-10 space-y-4">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
@@ -679,6 +687,13 @@ function DashboardHome() {
           </div>
         </>
       )}
+
+      <MeetingModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={modalType === "join" ? "Join Meeting" : "Start Meeting"}
+        isJoinMeeting={modalType === "join"}
+      />
     </div>
   );
 }

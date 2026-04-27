@@ -64,7 +64,7 @@ function InterviewScheduleUI({ embedded = false, onScheduled }: InterviewSchedul
   const interviews = useQuery(api.interviews.getAllInterviews);
   const users = useQuery(api.users.getUsers) ?? [];
   const predefinedProblems = useQuery(api.problems.getAllProblems) ?? [];
-  const createInterview = useMutation(api.interviews.createInterview);
+  const createInterview = useMutation((api as any).interviews.createInterview);
 
   const candidates = users?.filter((u) => u.role === "candidate");
   const interviewers = users?.filter((u) => u.role === "interviewer");
@@ -74,6 +74,7 @@ function InterviewScheduleUI({ embedded = false, onScheduled }: InterviewSchedul
     description: "",
     date: new Date(),
     time: "09:00",
+    candidateEmail: "",
     candidateId: "",
     interviewerIds: user?.id ? [user.id] : [],
   });
@@ -90,8 +91,12 @@ function InterviewScheduleUI({ embedded = false, onScheduled }: InterviewSchedul
 
   const scheduleMeeting = async () => {
     if (!client || !user) return;
-    if (!formData.candidateId || formData.interviewerIds.length === 0) {
-      toast.error("Please select both candidate and at least one interviewer");
+
+    const normalizedEmail = formData.candidateEmail.trim().toLowerCase();
+    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
+
+    if (!isValidEmail || formData.interviewerIds.length === 0) {
+      toast.error("Please provide a valid candidate email and at least one interviewer");
       return;
     }
 
@@ -122,7 +127,8 @@ function InterviewScheduleUI({ embedded = false, onScheduled }: InterviewSchedul
         startTime: meetingDate.getTime(),
         status: "upcoming",
         streamCallId: id,
-        candidateId,
+        candidateEmail: normalizedEmail,
+        candidateId: candidateId || undefined,
         interviewerIds,
         problems: selectedProblems,
       });
@@ -138,6 +144,7 @@ function InterviewScheduleUI({ embedded = false, onScheduled }: InterviewSchedul
         description: "",
         date: new Date(),
         time: "09:00",
+        candidateEmail: "",
         candidateId: "",
         interviewerIds: user?.id ? [user.id] : [],
       });
@@ -282,13 +289,39 @@ function InterviewScheduleUI({ embedded = false, onScheduled }: InterviewSchedul
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium">Candidate</label>
+        <label className="text-sm font-medium">Candidate Email</label>
+        <Input
+          type="email"
+          placeholder="candidate@example.com"
+          value={formData.candidateEmail}
+          onChange={(e) =>
+            setFormData({
+              ...formData,
+              candidateEmail: e.target.value,
+            })
+          }
+        />
+        <p className="text-xs text-muted-foreground">
+          Candidate can be unregistered. They will see this interview after signing up with this email.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Existing Candidate (Optional)</label>
         <Select
           value={formData.candidateId}
-          onValueChange={(candidateId) => setFormData({ ...formData, candidateId })}
+          onValueChange={(candidateId) => {
+            const selectedCandidate = candidates.find((candidate) => candidate.clerkId === candidateId);
+
+            setFormData({
+              ...formData,
+              candidateId,
+              candidateEmail: selectedCandidate?.email ?? formData.candidateEmail,
+            });
+          }}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Select candidate" />
+            <SelectValue placeholder="Select registered candidate" />
           </SelectTrigger>
           <SelectContent>
             {candidates.map((candidate) => (

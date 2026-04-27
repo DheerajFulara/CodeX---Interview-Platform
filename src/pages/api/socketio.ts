@@ -6,11 +6,18 @@ type WhiteboardRoomState = {
   updatedAt: number;
 };
 
+type ProblemVisibilityState = {
+  isVisible: boolean;
+  updatedAt: number;
+};
+
 declare global {
   // eslint-disable-next-line no-var
   var __whiteboardSocketServer: SocketIOServer | undefined;
   // eslint-disable-next-line no-var
   var __whiteboardRoomState: Map<string, WhiteboardRoomState> | undefined;
+  // eslint-disable-next-line no-var
+  var __problemVisibilityState: Map<string, ProblemVisibilityState> | undefined;
 }
 
 const getRoomStateStore = () => {
@@ -19,6 +26,14 @@ const getRoomStateStore = () => {
   }
 
   return globalThis.__whiteboardRoomState;
+};
+
+const getProblemVisibilityStore = () => {
+  if (!globalThis.__problemVisibilityState) {
+    globalThis.__problemVisibilityState = new Map<string, ProblemVisibilityState>();
+  }
+
+  return globalThis.__problemVisibilityState;
 };
 
 export const config = {
@@ -38,6 +53,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     const roomStateStore = getRoomStateStore();
+    const problemVisibilityStore = getProblemVisibilityStore();
 
     io.on("connection", (socket) => {
       const roomId = typeof socket.handshake.query.roomId === "string" ? socket.handshake.query.roomId : "";
@@ -55,6 +71,24 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
       };
 
       socket.emit("whiteboard:state", currentState);
+
+      // Send current problem visibility state to the newly connected user
+      const currentProblemState = problemVisibilityStore.get(roomId) ?? {
+        isVisible: false,
+        updatedAt: Date.now(),
+      };
+      socket.emit("problem:state", currentProblemState);
+
+      // Handle problem visibility toggle from interviewer
+      socket.on("problem:toggle", (payload: { isVisible: boolean }) => {
+        const nextState: ProblemVisibilityState = {
+          isVisible: payload.isVisible,
+          updatedAt: Date.now(),
+        };
+        problemVisibilityStore.set(roomId, nextState);
+        // Broadcast to ALL users in the room including sender
+        io.to(roomId).emit("problem:toggle", nextState);
+      });
 
       socket.on("whiteboard:update", (payload: { roomId?: string; elements: any[] }) => {
         const targetRoomId = payload.roomId || roomId;

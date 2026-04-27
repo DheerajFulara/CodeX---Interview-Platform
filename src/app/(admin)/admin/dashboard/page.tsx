@@ -1,8 +1,8 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { api } from "../../../../convex/_generated/api";
-import { Doc, Id } from "../../../../convex/_generated/dataModel";
+import { api } from "../../../../../convex/_generated/api";
+import { Doc, Id } from "../../../../../convex/_generated/dataModel";
 import toast from "react-hot-toast";
 import LoaderUI from "@/components/LoaderUI";
 import { getCandidateInfo, groupInterviews } from "@/lib/utils";

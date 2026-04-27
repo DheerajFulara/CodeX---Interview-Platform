@@ -1,6 +1,28 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
+const linkCandidateInterviewsByEmail = async (ctx: any, candidateId: string, email: string) => {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return;
+
+  const interviews = await ctx.db
+    .query("interviews")
+    .withIndex("by_candidate_email", (q: any) => q.eq("candidateEmail", normalizedEmail))
+    .collect();
+
+  await Promise.all(
+    interviews
+      .filter((interview: any) => !interview.candidateId)
+      .map((interview: any) =>
+        ctx.db.patch(interview._id, {
+          candidateId,
+        })
+      )
+  );
+};
+
 export const syncUser = mutation({
   args: {
     name: v.string(),
@@ -9,6 +31,8 @@ export const syncUser = mutation({
     image: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const normalizedEmail = normalizeEmail(args.email);
+
     const existingUser = await ctx.db
       .query("users")
       .filter((q) => q.eq(q.field("clerkId"), args.clerkId))
@@ -17,15 +41,22 @@ export const syncUser = mutation({
     if (existingUser) {
       await ctx.db.patch(existingUser._id, {
         name: args.name,
-        email: args.email,
+        email: normalizedEmail,
         image: args.image,
       });
+
+      await linkCandidateInterviewsByEmail(ctx, args.clerkId, normalizedEmail);
       return existingUser._id;
     }
 
-    return await ctx.db.insert("users", {
+    const newUserId = await ctx.db.insert("users", {
       ...args,
+      email: normalizedEmail,
     });
+
+    await linkCandidateInterviewsByEmail(ctx, args.clerkId, normalizedEmail);
+
+    return newUserId;
   },
 });
 
@@ -49,16 +80,27 @@ export const setUserRole = mutation({
 
     if (existingUser) {
       await ctx.db.patch(existingUser._id, { role: args.role });
+
+      if (existingUser.email) {
+        await linkCandidateInterviewsByEmail(ctx, args.userId, existingUser.email);
+      }
+
       return existingUser._id;
     }
 
-    return await ctx.db.insert("users", {
+    const email = normalizeEmail(identity.email ?? `${args.userId}@unknown.local`);
+
+    const createdUserId = await ctx.db.insert("users", {
       clerkId: args.userId,
       role: args.role,
       name: identity.name ?? "User",
-      email: identity.email ?? `${args.userId}@unknown.local`,
+      email,
       image: identity.pictureUrl,
     });
+
+    await linkCandidateInterviewsByEmail(ctx, args.userId, email);
+
+    return createdUserId;
   },
 });
 

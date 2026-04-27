@@ -32,6 +32,8 @@ const selectedProblemValidator = v.union(
   })
 );
 
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
 export const getAllInterviews = query({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -198,7 +200,8 @@ export const createInterview = mutation({
     startTime: v.number(),
     status: v.string(),
     streamCallId: v.string(),
-    candidateId: v.string(),
+    candidateEmail: v.string(),
+    candidateId: v.optional(v.string()),
     interviewerIds: v.array(v.string()),
     problems: v.optional(v.array(selectedProblemValidator)),
   },
@@ -212,23 +215,41 @@ export const createInterview = mutation({
       .first();
 
     const interviewerName = interviewer?.name || "Interviewer";
+    const candidateEmail = normalizeEmail(args.candidateEmail);
+
+    let resolvedCandidateId = args.candidateId?.trim() || "";
+
+    if (!resolvedCandidateId) {
+      const existingCandidate = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", candidateEmail))
+        .first();
+
+      if (existingCandidate) {
+        resolvedCandidateId = existingCandidate.clerkId;
+      }
+    }
 
     const interviewId = await ctx.db.insert("interviews", {
       ...args,
+      candidateEmail,
+      candidateId: resolvedCandidateId,
       problems: args.problems ?? [],
     });
 
-    await ctx.db.insert("notifications", {
-      candidateId: args.candidateId,
-      interviewId,
-      type: "meeting_scheduled",
-      title: "Interview Scheduled",
-      message: `${interviewerName} scheduled an interview: ${args.title}`,
-      interviewerId: identity.subject,
-      interviewerName,
-      isRead: false,
-      createdAt: Date.now(),
-    });
+    if (resolvedCandidateId) {
+      await ctx.db.insert("notifications", {
+        candidateId: resolvedCandidateId,
+        interviewId,
+        type: "meeting_scheduled",
+        title: "Interview Scheduled",
+        message: `${interviewerName} scheduled an interview: ${args.title}`,
+        interviewerId: identity.subject,
+        interviewerName,
+        isRead: false,
+        createdAt: Date.now(),
+      });
+    }
 
     return interviewId;
   },
@@ -302,17 +323,19 @@ export const cancelInterview = mutation({
       endTime: Date.now(),
     });
 
-    await ctx.db.insert("notifications", {
-      candidateId: interview.candidateId,
-      interviewId: interview._id,
-      type: "meeting_canceled",
-      title: "Interview Canceled",
-      message: `${interviewerName} canceled interview: ${interview.title}`,
-      interviewerId: identity.subject,
-      interviewerName,
-      isRead: false,
-      createdAt: Date.now(),
-    });
+    if (interview.candidateId) {
+      await ctx.db.insert("notifications", {
+        candidateId: interview.candidateId,
+        interviewId: interview._id,
+        type: "meeting_canceled",
+        title: "Interview Canceled",
+        message: `${interviewerName} canceled interview: ${interview.title}`,
+        interviewerId: identity.subject,
+        interviewerName,
+        isRead: false,
+        createdAt: Date.now(),
+      });
+    }
 
     return true;
   },

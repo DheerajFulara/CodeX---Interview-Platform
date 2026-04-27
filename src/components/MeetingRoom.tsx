@@ -47,7 +47,7 @@ function MeetingRoom() {
   }
 
   return (
-    <div className="h-[calc(100vh-4rem-1px)]">
+    <div className="h-full">
       <ResizablePanelGroup direction="horizontal">
         <ResizablePanel defaultSize={35} minSize={25} maxSize={100} className="relative">
           {/* VIDEO LAYOUT */}
@@ -66,9 +66,9 @@ function MeetingRoom() {
 
           {/* VIDEO CONTROLS */}
 
-          <div className="absolute bottom-4 left-0 right-0">
+          <div className="absolute bottom-4 left-0 right-0 pointer-events-none">
             <div className="flex flex-col items-center gap-4">
-              <div className="flex items-center gap-2 flex-wrap justify-center px-4">
+              <div className="flex items-center gap-2 flex-wrap justify-center px-4 pointer-events-auto">
                 <CallControls onLeave={() => router.push("/")} />
 
                 <div className="flex items-center gap-2">

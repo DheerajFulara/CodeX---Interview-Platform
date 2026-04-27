@@ -19,14 +19,27 @@ export const hideRecording = mutation({
       throw new Error("Only interviewers can delete recordings from dashboard");
     }
 
-    const existing = await ctx.db
+    const existingByUrl = await ctx.db
       .query("recordingDeletions")
       .withIndex("by_interviewer_and_url", (q) =>
         q.eq("interviewerId", identity.subject).eq("recordingUrl", args.recordingUrl)
       )
       .first();
 
-    if (existing) return existing._id;
+    if (existingByUrl) return existingByUrl._id;
+
+    if (args.recordingFilename) {
+      const existingForInterviewer = await ctx.db
+        .query("recordingDeletions")
+        .withIndex("by_interviewer_id", (q) => q.eq("interviewerId", identity.subject))
+        .collect();
+
+      const existingByFilename = existingForInterviewer.find(
+        (item) => item.recordingFilename === args.recordingFilename
+      );
+
+      if (existingByFilename) return existingByFilename._id;
+    }
 
     return await ctx.db.insert("recordingDeletions", {
       interviewerId: identity.subject,

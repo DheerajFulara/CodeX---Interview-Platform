@@ -39,7 +39,9 @@ export default defineSchema({
     image: v.optional(v.string()),
     role: v.optional(v.union(v.literal("candidate"), v.literal("interviewer"))),
     clerkId: v.string(),
-  }).index("by_clerk_id", ["clerkId"]),
+  })
+    .index("by_clerk_id", ["clerkId"])
+    .index("by_email", ["email"]),
 
   problems: defineTable({
     slug: v.string(),
@@ -59,11 +61,13 @@ export default defineSchema({
     endTime: v.optional(v.number()),
     status: v.string(),
     streamCallId: v.string(),
+    candidateEmail: v.optional(v.string()),
     candidateId: v.string(),
     interviewerIds: v.array(v.string()),
     problems: v.optional(v.array(interviewProblemValidator)),
   })
     .index("by_candidate_id", ["candidateId"])
+    .index("by_candidate_email", ["candidateEmail"])
     .index("by_stream_call_id", ["streamCallId"]),
 
   comments: defineTable({

@@ -77,3 +77,16 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+body.meeting-active nav {
+  display: none;
+}
+
+body.meeting-active main {
+  padding: 0 !important;
+  height: 100vh;
+}
+
+body.meeting-active main > * {
+  height: 100%;
+}
