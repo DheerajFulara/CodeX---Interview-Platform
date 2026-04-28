@@ -251,6 +251,31 @@ function CodeEditor() {
   // Whether this user can see the problem section
   const canSeeProblem = isInterviewer || isProblemVisible;
   const canOpenWorkspace = Boolean(selectedQuestion);
+  const workspaceButtons = canOpenWorkspace ? (
+    <>
+      <Button
+        type="button"
+        variant={isEditorOpen ? "secondary" : "default"}
+        onClick={() => {
+          setIsWhiteboardOpen(false);
+          setIsEditorOpen((prev) => !prev);
+        }}
+      >
+        {isEditorOpen ? "Close Editor" : "Open Editor"}
+      </Button>
+
+      <Button
+        type="button"
+        variant={isWhiteboardOpen ? "secondary" : "default"}
+        onClick={() => {
+          setIsEditorOpen(false);
+          setIsWhiteboardOpen((prev) => !prev);
+        }}
+      >
+        {isWhiteboardOpen ? "Close Whiteboard" : "Open Whiteboard"}
+      </Button>
+    </>
+  ) : null;
 
   useEffect(() => {
     if (isCandidate && !canSeeProblem) {
@@ -380,31 +405,7 @@ function CodeEditor() {
                         </SelectContent>
                       </Select>
 
-                      {canOpenWorkspace && (
-                        <>
-                          <Button
-                            type="button"
-                            variant={isEditorOpen ? "secondary" : "default"}
-                            onClick={() => {
-                              setIsWhiteboardOpen(false);
-                              setIsEditorOpen((prev) => !prev);
-                            }}
-                          >
-                            {isEditorOpen ? "Close Editor" : "Open Editor"}
-                          </Button>
-
-                          <Button
-                            type="button"
-                            variant={isWhiteboardOpen ? "secondary" : "default"}
-                            onClick={() => {
-                              setIsEditorOpen(false);
-                              setIsWhiteboardOpen((prev) => !prev);
-                            }}
-                          >
-                            {isWhiteboardOpen ? "Close Whiteboard" : "Open Whiteboard"}
-                          </Button>
-                        </>
-                      )}
+                      {workspaceButtons}
                     </div>
                   </div>
 
@@ -498,6 +499,9 @@ function CodeEditor() {
                   <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
                     The interviewer hasn&apos;t shared the problem yet. Please wait — it will appear here automatically once shared.
                   </p>
+                  <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
+                    {workspaceButtons}
+                  </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground/70 bg-muted/40 rounded-full px-4 py-2">
                     <ClockIcon className="h-3.5 w-3.5 animate-pulse" />
                     <span>Waiting for interviewer to share the problem…</span>

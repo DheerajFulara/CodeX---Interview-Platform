@@ -9,7 +9,7 @@ import {
 } from "@stream-io/video-react-sdk";
 import { LayoutListIcon, LoaderIcon, MessageSquareIcon, UsersIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "./ui/resizable";
 import {
@@ -37,6 +37,12 @@ function MeetingRoom() {
   ) ?? 0;
 
   const callingState = useCallCallingState();
+
+  useEffect(() => {
+    if (callingState !== CallingState.JOINED) {
+      router.replace("/dashboard");
+    }
+  }, [callingState, router]);
 
   if (callingState !== CallingState.JOINED) {
     return (
