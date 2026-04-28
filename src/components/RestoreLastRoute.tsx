@@ -15,7 +15,7 @@ function RestoreLastRoute() {
   useEffect(() => {
     if (!pathname) return;
 
-    const query = searchParams.toString();
+    const query = searchParams?.toString() ?? "";
     const currentRoute = query ? `${pathname}?${query}` : pathname;
 
     if (!checkedReloadRef.current) {

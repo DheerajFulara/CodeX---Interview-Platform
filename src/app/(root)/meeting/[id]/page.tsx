@@ -12,11 +12,12 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 function MeetingPage() {
-  const { id } = useParams();
+  const params = useParams<{ id?: string | string[] }>();
+  const id = (Array.isArray(params?.id) ? params.id[0] : params?.id) || "";
   const { user, isLoaded } = useUser();
   const { call, isCallLoading } = useGetCallById(id);
   const interview = useQuery(api.interviews.getInterviewByStreamCallId, {
-    streamCallId: typeof id === "string" ? id : id[0],
+    streamCallId: id,
   });
 
   const [isSetupComplete, setIsSetupComplete] = useState(false);

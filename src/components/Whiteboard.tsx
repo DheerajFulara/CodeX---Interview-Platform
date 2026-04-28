@@ -112,14 +112,14 @@ function Whiteboard({ roomId, onClose }: WhiteboardProps) {
     pendingRemoteSnapshotRef.current = null;
   }, [elements]);
 
-  const emitWhiteboardUpdate = (nextElements: any[]) => {
+  const emitWhiteboardUpdate = (nextElements: readonly any[]) => {
     const snapshot = JSON.stringify(nextElements ?? []);
     if (snapshot === suppressEmitSnapshotRef.current) {
       suppressEmitSnapshotRef.current = null;
       return;
     }
 
-    setElements(nextElements ?? []);
+    setElements([...(nextElements ?? [])]);
 
     if (emitTimerRef.current) {
       clearTimeout(emitTimerRef.current);
@@ -128,7 +128,7 @@ function Whiteboard({ roomId, onClose }: WhiteboardProps) {
     emitTimerRef.current = setTimeout(() => {
       socketRef.current?.emit("whiteboard:update", {
         roomId,
-        elements: nextElements ?? [] ,
+        elements: [...(nextElements ?? [])],
       });
     }, 90);
   };
@@ -183,8 +183,8 @@ function Whiteboard({ roomId, onClose }: WhiteboardProps) {
               }
             }}
             theme="dark"
-            onChange={(nextElements: any[]) => {
-              emitWhiteboardUpdate(nextElements ?? []);
+              onChange={(nextElements) => {
+                emitWhiteboardUpdate(nextElements);
             }}
           />
         </div>

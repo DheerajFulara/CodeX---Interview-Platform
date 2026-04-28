@@ -43,12 +43,20 @@ export const config = {
 };
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  const socketServer = res.socket.server as typeof res.socket.server & {
-    io?: SocketIOServer;
-  };
+  const socket = res.socket;
+  if (!socket) {
+    res.status(500).end();
+    return;
+  }
+
+  const socketServer = (socket as any).server as { io?: SocketIOServer } | undefined;
+  if (!socketServer) {
+    res.status(500).end();
+    return;
+  }
 
   if (!socketServer.io) {
-    const io = new SocketIOServer(res.socket.server, {
+    const io = new SocketIOServer((socket as any).server, {
       path: "/api/socketio",
     });
 
@@ -72,21 +80,18 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 
       socket.emit("whiteboard:state", currentState);
 
-      // Send current problem visibility state to the newly connected user
       const currentProblemState = problemVisibilityStore.get(roomId) ?? {
         isVisible: false,
         updatedAt: Date.now(),
       };
       socket.emit("problem:state", currentProblemState);
 
-      // Handle problem visibility toggle from interviewer
       socket.on("problem:toggle", (payload: { isVisible: boolean }) => {
         const nextState: ProblemVisibilityState = {
           isVisible: payload.isVisible,
           updatedAt: Date.now(),
         };
         problemVisibilityStore.set(roomId, nextState);
-        // Broadcast to ALL users in the room including sender
         io.to(roomId).emit("problem:toggle", nextState);
       });
 
