@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420">
+  <style>
+    .box { fill:#06202b; stroke:#7dd3fc; stroke-width:1 }
+    .t { fill:#e6f6ff; font-family:Arial, sans-serif; font-size:13px }
+    .arrow { stroke:#7dd3fc; stroke-width:2; fill:none }
+  </style>
+  <rect x="30" y="40" width="240" height="80" rx="8" class="box" />
+  <text x="60" y="90" class="t">Client A (Editor)</text>
+
+  <rect x="330" y="40" width="240" height="80" rx="8" class="box" />
+  <text x="360" y="90" class="t">Server (Convex)</text>
+
+  <rect x="630" y="40" width="240" height="80" rx="8" class="box" />
+  <text x="660" y="90" class="t">Client B (Editor)</text>
+
+  <path d="M270 80 L330 80" class="arrow" marker-end="url(#a)" />
+  <path d="M570 80 L630 80" class="arrow" marker-end="url(#a)" />
+  <path d="M450 120 L450 180 L450 260" class="arrow" marker-end="url(#a)" />
+
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#7dd3fc" />
+    </marker>
+  </defs>
+
+  <text x="260" y="110" class="t">Sync (debounced write/read)</text>
+  <text x="600" y="110" class="t">Broadcast to peers</text>
+</svg>

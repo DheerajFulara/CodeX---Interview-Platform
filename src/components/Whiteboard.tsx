@@ -119,8 +119,6 @@ function Whiteboard({ roomId, onClose }: WhiteboardProps) {
       return;
     }
 
-    setElements([...(nextElements ?? [])]);
-
     if (emitTimerRef.current) {
       clearTimeout(emitTimerRef.current);
     }

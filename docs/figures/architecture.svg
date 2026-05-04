@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420">
+  <style>
+    .box { fill:#0f172a; stroke:#94a3b8; stroke-width:2 }
+    .label { fill:#e2e8f0; font-family:Arial, Helvetica, sans-serif; font-size:14px }
+    .title { fill:#e6fffa; font-weight:700; font-size:16px }
+    .arrow { stroke:#94a3b8; stroke-width:2; fill:none }
+  </style>
+  <rect x="10" y="10" width="880" height="60" rx="8" class="box" fill="#05204a" />
+  <text x="30" y="48" class="title">Remote Interview Platform — High Level Architecture</text>
+
+  <rect x="40" y="100" width="200" height="80" rx="8" class="box" fill="#072a3a" />
+  <text x="70" y="140" class="label">Next.js Client</text>
+  <text x="70" y="158" class="label">(UI, Editor, Whiteboard)</text>
+
+  <rect x="350" y="100" width="200" height="80" rx="8" class="box" fill="#07324a" />
+  <text x="390" y="140" class="label">Stream Video</text>
+  <text x="390" y="158" class="label">(Media SDK)</text>
+
+  <rect x="660" y="100" width="200" height="80" rx="8" class="box" fill="#07324a" />
+  <text x="690" y="140" class="label">Convex</text>
+  <text x="690" y="158" class="label">(State & Persistence)</text>
+
+  <rect x="200" y="240" width="200" height="80" rx="8" class="box" fill="#042833" />
+  <text x="240" y="280" class="label">Socket.IO Server</text>
+  <text x="240" y="298" class="label">(Whiteboard Sync)</text>
+
+  <line x1="240" y1="180" x2="240" y2="240" class="arrow" marker-end="url(#arrow)" />
+  <line x1="450" y1="180" x2="450" y2="240" class="arrow" marker-end="url(#arrow)" />
+
+  <line x1="240" y1="190" x2="450" y2="190" class="arrow" marker-end="url(#arrow)" />
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#94a3b8" />
+    </marker>
+  </defs>
+</svg>

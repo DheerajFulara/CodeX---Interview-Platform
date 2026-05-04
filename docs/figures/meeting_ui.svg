@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420">
+  <style>
+    .bg { fill:#0b1220 }
+    .panel { fill:#071021; stroke:#334155; stroke-width:1 }
+    .card { fill:#061426; stroke:#2b3946 }
+    .text { fill:#e6eef8; font-family:Arial, sans-serif; font-size:13px }
+    .muted { fill:#94a3b8; font-size:11px }
+  </style>
+  <rect width="900" height="420" class="bg" rx="8" />
+  <text x="26" y="34" class="text" style="font-weight:700; font-size:18px">Meeting UI (video + editor + whiteboard)</text>
+
+  <!-- Video column -->
+  <rect x="24" y="64" width="420" height="300" rx="8" class="panel" />
+  <text x="36" y="90" class="muted">Video Layout</text>
+
+  <!-- Editor/Whiteboard column -->
+  <rect x="460" y="64" width="420" height="140" rx="8" class="panel" />
+  <text x="472" y="90" class="muted">Editor (collaborative)</text>
+
+  <rect x="460" y="220" width="420" height="144" rx="8" class="panel" />
+  <text x="472" y="246" class="muted">Whiteboard (Excalidraw)</text>
+
+  <!-- Buttons -->
+  <rect x="520" y="125" width="120" height="28" rx="6" class="card" />
+  <text x="540" y="144" class="text">Open Editor</text>
+  <rect x="660" y="125" width="140" height="28" rx="6" class="card" />
+  <text x="680" y="144" class="text">Open Whiteboard</text>
+
+  <!-- Problem placeholder -->
+  <rect x="60" y="120" width="360" height="60" rx="6" class="card" />
+  <text x="80" y="150" class="muted">Problem Area (hidden for candidate)</text>
+</svg>
