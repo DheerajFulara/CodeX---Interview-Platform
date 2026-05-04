@@ -2,10 +2,11 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
-import { io, Socket } from "socket.io-client";
 import { Loader2Icon, Trash2Icon, XIcon } from "lucide-react";
 import { Button } from "./ui/button";
 import { useUserRole } from "@/hooks/useUserRole";
+import { api } from "../../convex/_generated/api";
+import { useMutation, useQuery } from "convex/react";
 
 type WhiteboardRoomState = {
   elements: any[];
@@ -27,118 +28,128 @@ type WhiteboardProps = {
 
 function Whiteboard({ roomId, onClose }: WhiteboardProps) {
   const { isInterviewer } = useUserRole();
-  const socketRef = useRef<Socket | null>(null);
   const excalidrawApiRef = useRef<any>(null);
   const emitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressEmitSnapshotRef = useRef<string | null>(null);
-  const pendingRemoteSnapshotRef = useRef<string | null>(null);
+  const isApplyingRemoteStateRef = useRef(false);
+  const lastAppliedSnapshotRef = useRef<string>("");
+  const hasAppliedSceneRef = useRef(false);
   const [elements, setElements] = useState<any[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isBooting, setIsBooting] = useState(true);
+  const [isLoadingOverlayVisible, setIsLoadingOverlayVisible] = useState(true);
+
+  const whiteboardState = useQuery(
+    (api as any).whiteboard.getWhiteboardStateByRoomId,
+    roomId ? { roomId } : "skip"
+  ) as WhiteboardRoomState | null | undefined;
+  const upsertWhiteboardState = useMutation((api as any).whiteboard.upsertWhiteboardState);
 
   useEffect(() => {
-    if (!roomId) return;
+    if (whiteboardState === undefined) {
+      setIsLoadingOverlayVisible(true);
+      return;
+    }
 
-    const socket: Socket = io({
-      path: "/api/socketio",
-      query: { roomId },
-      transports: ["websocket", "polling"],
-      autoConnect: false,
+    const nextElements = whiteboardState?.elements ?? [];
+    const nextSnapshot = JSON.stringify(nextElements);
+
+    if (nextSnapshot === lastAppliedSnapshotRef.current) {
+      setIsLoadingOverlayVisible(false);
+      return;
+    }
+
+    isApplyingRemoteStateRef.current = true;
+    suppressEmitSnapshotRef.current = nextSnapshot;
+    lastAppliedSnapshotRef.current = nextSnapshot;
+    setElements(nextElements);
+
+    if (excalidrawApiRef.current) {
+      excalidrawApiRef.current.updateScene({ elements: nextElements });
+      hasAppliedSceneRef.current = true;
+    }
+
+    queueMicrotask(() => {
+      isApplyingRemoteStateRef.current = false;
     });
 
-    socketRef.current = socket;
-    setIsConnected(false);
-    setIsBooting(true);
+    setIsLoadingOverlayVisible(false);
+  }, [whiteboardState]);
 
-    const applyRemoteState = (nextElements: any[]) => {
-      const snapshot = JSON.stringify(nextElements ?? []);
-      suppressEmitSnapshotRef.current = snapshot;
-      pendingRemoteSnapshotRef.current = snapshot;
-      setElements(nextElements ?? []);
+  useEffect(() => {
+    if (!roomId) {
+      setIsLoadingOverlayVisible(false);
+      return;
+    }
 
-      if (excalidrawApiRef.current) {
-        excalidrawApiRef.current.updateScene({ elements: nextElements ?? [] });
-        pendingRemoteSnapshotRef.current = null;
-      }
-    };
-
-    socket.on("connect", () => {
-      setIsConnected(true);
-    });
-
-    socket.on("whiteboard:state", (state: WhiteboardRoomState) => {
-      applyRemoteState(state?.elements ?? []);
-      setIsBooting(false);
-    });
-
-    socket.on("whiteboard:update", (state: WhiteboardRoomState) => {
-      applyRemoteState(state?.elements ?? []);
-      setIsBooting(false);
-    });
-
-    socket.on("whiteboard:clear", () => {
-      applyRemoteState([]);
-      setIsBooting(false);
-    });
-
-    socket.on("disconnect", () => {
-      setIsConnected(false);
-    });
-
-    const bootstrapAndConnect = async () => {
-      try {
-        await fetch("/api/socketio");
-        socket.connect();
-      } catch (error) {
-        console.error("Failed to bootstrap whiteboard socket server:", error);
-        setIsBooting(false);
-      }
-    };
-
-    void bootstrapAndConnect();
+    const fallbackTimer = setTimeout(() => {
+      setIsLoadingOverlayVisible(false);
+    }, 2500);
 
     return () => {
-      if (emitTimerRef.current) {
-        clearTimeout(emitTimerRef.current);
-      }
-      socket.disconnect();
-      socketRef.current = null;
+      clearTimeout(fallbackTimer);
     };
   }, [roomId]);
 
   useEffect(() => {
-    if (!excalidrawApiRef.current || pendingRemoteSnapshotRef.current === null) return;
-    excalidrawApiRef.current.updateScene({ elements });
-    pendingRemoteSnapshotRef.current = null;
-  }, [elements]);
+    return () => {
+      if (emitTimerRef.current) {
+        clearTimeout(emitTimerRef.current);
+      }
+    };
+  }, []);
 
   const emitWhiteboardUpdate = (nextElements: readonly any[]) => {
+    if (!roomId) return;
+
     const snapshot = JSON.stringify(nextElements ?? []);
+    if (isApplyingRemoteStateRef.current) {
+      return;
+    }
+
     if (snapshot === suppressEmitSnapshotRef.current) {
       suppressEmitSnapshotRef.current = null;
       return;
     }
+
+    if (snapshot === lastAppliedSnapshotRef.current) {
+      return;
+    }
+
+    lastAppliedSnapshotRef.current = snapshot;
+    setElements([...(nextElements ?? [])]);
 
     if (emitTimerRef.current) {
       clearTimeout(emitTimerRef.current);
     }
 
     emitTimerRef.current = setTimeout(() => {
-      socketRef.current?.emit("whiteboard:update", {
+      void upsertWhiteboardState({
         roomId,
         elements: [...(nextElements ?? [])],
+      }).catch((error) => {
+        console.error("Failed to update whiteboard state:", error);
       });
     }, 90);
   };
 
   const clearBoard = () => {
     const nextElements: any[] = [];
+    isApplyingRemoteStateRef.current = true;
     setElements(nextElements);
     suppressEmitSnapshotRef.current = JSON.stringify(nextElements);
+    lastAppliedSnapshotRef.current = JSON.stringify(nextElements);
+
     if (excalidrawApiRef.current) {
       excalidrawApiRef.current.updateScene({ elements: nextElements });
+      hasAppliedSceneRef.current = true;
     }
-    socketRef.current?.emit("whiteboard:clear", { roomId });
+
+    queueMicrotask(() => {
+      isApplyingRemoteStateRef.current = false;
+    });
+
+    void upsertWhiteboardState({ roomId, elements: nextElements }).catch((error) => {
+      console.error("Failed to clear whiteboard state:", error);
+    });
   };
 
   return (
@@ -147,7 +158,7 @@ function Whiteboard({ roomId, onClose }: WhiteboardProps) {
         <div>
           <h3 className="text-sm font-semibold">Whiteboard</h3>
           <p className="text-xs text-muted-foreground">
-            {isConnected ? "Live sync enabled" : "Connecting to whiteboard..."}
+            {isLoadingOverlayVisible ? "Loading whiteboard..." : "Live sync enabled"}
           </p>
         </div>
 
@@ -165,7 +176,7 @@ function Whiteboard({ roomId, onClose }: WhiteboardProps) {
       </div>
 
       <div className="relative flex-1 min-h-0">
-        {isBooting && (
+        {isLoadingOverlayVisible && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-sm">
             <Loader2Icon className="size-6 animate-spin text-muted-foreground" />
           </div>
@@ -173,16 +184,23 @@ function Whiteboard({ roomId, onClose }: WhiteboardProps) {
 
         <div className="h-full w-full">
           <Excalidraw
-            excalidrawAPI={(api: any) => {
-              excalidrawApiRef.current = api;
-              if (pendingRemoteSnapshotRef.current !== null) {
-                api.updateScene({ elements });
-                pendingRemoteSnapshotRef.current = null;
+            excalidrawAPI={(apiInstance: any) => {
+              excalidrawApiRef.current = apiInstance;
+              const snapshot = JSON.stringify(elements);
+              if (hasAppliedSceneRef.current && snapshot === lastAppliedSnapshotRef.current) {
+                return;
               }
+
+              isApplyingRemoteStateRef.current = true;
+              apiInstance.updateScene({ elements });
+              hasAppliedSceneRef.current = true;
+              queueMicrotask(() => {
+                isApplyingRemoteStateRef.current = false;
+              });
             }}
             theme="dark"
-              onChange={(nextElements) => {
-                emitWhiteboardUpdate(nextElements);
+            onChange={(nextElements) => {
+              emitWhiteboardUpdate(nextElements);
             }}
           />
         </div>

@@ -1,8 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-const normalizeEmail = (email: string) => email.trim().toLowerCase();
-
 type InterviewAccess = {
   candidateId: string;
   candidateEmail?: string;
@@ -13,6 +11,8 @@ type Identity = {
   subject: string;
   email?: string;
 };
+
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 const canAccessInterview = (interview: InterviewAccess, identity: Identity) => {
   const normalizedUserEmail = normalizeEmail(identity.email || "");
@@ -32,20 +32,7 @@ const getInterviewByRoomId = async (ctx: any, roomId: string) => {
     .first();
 };
 
-export const getSessionByRoomId = query({
-  args: { roomId: v.string() },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-
-    return await ctx.db
-      .query("codeSessions")
-      .withIndex("by_room_id", (q) => q.eq("roomId", args.roomId))
-      .first();
-  },
-});
-
-export const getProblemVisibilityByRoomId = query({
+export const getWhiteboardStateByRoomId = query({
   args: { roomId: v.string() },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -57,54 +44,16 @@ export const getProblemVisibilityByRoomId = query({
     }
 
     return await ctx.db
-      .query("problemVisibilityStates")
+      .query("whiteboardStates")
       .withIndex("by_room_id", (q) => q.eq("roomId", args.roomId))
       .first();
   },
 });
 
-export const upsertSession = mutation({
+export const upsertWhiteboardState = mutation({
   args: {
     roomId: v.string(),
-    questionId: v.string(),
-    language: v.union(v.literal("javascript"), v.literal("python"), v.literal("java")),
-    code: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-
-    const existing = await ctx.db
-      .query("codeSessions")
-      .withIndex("by_room_id", (q) => q.eq("roomId", args.roomId))
-      .first();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        questionId: args.questionId,
-        language: args.language,
-        code: args.code,
-        updatedBy: identity.subject,
-        updatedAt: Date.now(),
-      });
-      return existing._id;
-    }
-
-    return await ctx.db.insert("codeSessions", {
-      roomId: args.roomId,
-      questionId: args.questionId,
-      language: args.language,
-      code: args.code,
-      updatedBy: identity.subject,
-      updatedAt: Date.now(),
-    });
-  },
-});
-
-export const setProblemVisibility = mutation({
-  args: {
-    roomId: v.string(),
-    isVisible: v.boolean(),
+    elements: v.array(v.any()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -115,8 +64,8 @@ export const setProblemVisibility = mutation({
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
       .first();
 
-    if (!currentUser || currentUser.role !== "interviewer") {
-      throw new Error("Only interviewers can change problem visibility");
+    if (!currentUser) {
+      throw new Error("Only authenticated users can update the whiteboard");
     }
 
     const interview = await getInterviewByRoomId(ctx, args.roomId);
@@ -124,18 +73,18 @@ export const setProblemVisibility = mutation({
       throw new Error("Interview not found");
     }
 
-    if (!interview.interviewerIds.includes(identity.subject)) {
-      throw new Error("Not allowed to change problem visibility for this interview");
+    if (!canAccessInterview(interview, identity)) {
+      throw new Error("Not allowed to update this whiteboard");
     }
 
     const existing = await ctx.db
-      .query("problemVisibilityStates")
+      .query("whiteboardStates")
       .withIndex("by_room_id", (q) => q.eq("roomId", args.roomId))
       .first();
 
     const nextState = {
       roomId: args.roomId,
-      isVisible: args.isVisible,
+      elements: args.elements,
       updatedBy: identity.subject,
       updatedAt: Date.now(),
     };
@@ -145,6 +94,6 @@ export const setProblemVisibility = mutation({
       return existing._id;
     }
 
-    return await ctx.db.insert("problemVisibilityStates", nextState);
+    return await ctx.db.insert("whiteboardStates", nextState);
   },
 });

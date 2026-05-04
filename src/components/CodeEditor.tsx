@@ -13,7 +13,6 @@ import { useParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import Whiteboard from "./Whiteboard";
 import { useUserRole } from "@/hooks/useUserRole";
-import { io, Socket } from "socket.io-client";
 
 type SupportedLanguage = "javascript" | "python" | "java";
 
@@ -61,52 +60,22 @@ function CodeEditor() {
   const [code, setCode] = useState(EMPTY_EDITOR_CODE[language]);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isWhiteboardOpen, setIsWhiteboardOpen] = useState(false);
-  const [isProblemVisible, setIsProblemVisible] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const problemSocketRef = useRef<Socket | null>(null);
+  const problemVisibility = useQuery(
+    (api as any).codeSessions.getProblemVisibilityByRoomId,
+    roomId ? { roomId } : "skip"
+  );
+  const setProblemVisibility = useMutation((api as any).codeSessions.setProblemVisibility);
 
-  // Socket.IO connection for problem visibility sync
-  useEffect(() => {
-    if (!roomId) return;
-
-    const socket: Socket = io({
-      path: "/api/socketio",
-      query: { roomId },
-      transports: ["websocket", "polling"],
-      autoConnect: false,
-    });
-
-    problemSocketRef.current = socket;
-
-    socket.on("problem:state", (data: { isVisible: boolean }) => {
-      setIsProblemVisible(data.isVisible);
-    });
-
-    socket.on("problem:toggle", (data: { isVisible: boolean }) => {
-      setIsProblemVisible(data.isVisible);
-    });
-
-    const bootstrapAndConnect = async () => {
-      try {
-        await fetch("/api/socketio");
-        socket.connect();
-      } catch (error) {
-        console.error("Failed to connect problem visibility socket:", error);
-      }
-    };
-
-    void bootstrapAndConnect();
-
-    return () => {
-      socket.disconnect();
-      problemSocketRef.current = null;
-    };
-  }, [roomId]);
+  const isProblemVisible = problemVisibility?.isVisible ?? false;
 
   const handleToggleProblemVisibility = () => {
     const nextVisible = !isProblemVisible;
-    setIsProblemVisible(nextVisible);
-    problemSocketRef.current?.emit("problem:toggle", { isVisible: nextVisible });
+    if (!roomId) return;
+
+    void setProblemVisibility({ roomId, isVisible: nextVisible }).catch((error) => {
+      console.error("Failed to update problem visibility:", error);
+    });
   };
 
   const interview = useQuery(

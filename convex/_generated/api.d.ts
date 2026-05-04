@@ -23,6 +23,7 @@ import type * as notifications from "../notifications.js";
 import type * as problems from "../problems.js";
 import type * as recordingDeletions from "../recordingDeletions.js";
 import type * as users from "../users.js";
+import type * as whiteboard from "../whiteboard.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   problems: typeof problems;
   recordingDeletions: typeof recordingDeletions;
   users: typeof users;
+  whiteboard: typeof whiteboard;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

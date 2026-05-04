@@ -142,6 +142,20 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_room_id", ["roomId"]),
 
+  problemVisibilityStates: defineTable({
+    roomId: v.string(),
+    isVisible: v.boolean(),
+    updatedBy: v.string(),
+    updatedAt: v.number(),
+  }).index("by_room_id", ["roomId"]),
+
+  whiteboardStates: defineTable({
+    roomId: v.string(),
+    elements: v.array(v.any()),
+    updatedBy: v.string(),
+    updatedAt: v.number(),
+  }).index("by_room_id", ["roomId"]),
+
   chatMessages: defineTable({
     roomId: v.string(),
     senderId: v.string(),
